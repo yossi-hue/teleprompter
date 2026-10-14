@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="טלפרומפטר">
+<meta name="theme-color" content="#0b0d12">
+<title>טלפרומפטר נתיב האומץ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#0F56AA;--purple:#9067C6;--green:#3DB285;--gold:#e8b86d;--bg:#0b0d12;--card:#151924;--line:#262c3a;--fg:#fff;--muted:#98a1b3;--red:#ff3b3b}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--fg);font-family:Heebo,-apple-system,'Segoe UI',Arial,sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none}
+button,textarea,input{font-family:inherit;color:inherit}
+button{cursor:pointer}
+.screen{position:fixed;inset:0;display:none;flex-direction:column}
+.screen.on{display:flex}
+.brandbar{height:4px;background:linear-gradient(90deg,var(--purple),var(--blue),var(--green));flex:none}
+
+/* ---------- home ---------- */
+#home{padding-top:env(safe-area-inset-top)}
+.head{padding:18px 20px 8px;flex:none}
+.head h1{font-size:28px;font-weight:800;line-height:1.15}
+.head p{color:var(--muted);font-size:15px;margin-top:4px}
+.list{flex:1;overflow-y:auto;padding:10px 16px calc(env(safe-area-inset-bottom) + 110px);display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;text-align:right;display:flex;flex-direction:column;gap:6px;width:100%}
+.card:active{transform:scale(.985);background:#1b2030}
+.card .lab{color:var(--gold);font-size:13px;font-weight:600}
+.card .tit{font-size:21px;font-weight:800}
+.card .pre{color:var(--muted);font-size:14px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .meta{display:flex;gap:14px;color:var(--muted);font-size:13px;margin-top:4px}
+.card .go{margin-top:8px;align-self:flex-start;background:var(--gold);color:#111;border-radius:999px;padding:8px 18px;font-weight:800;font-size:15px}
+.empty{color:var(--muted);text-align:center;padding:40px 10px;line-height:1.6}
+.fab{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom) + 16px);height:58px;border-radius:18px;border:1px dashed #3a4357;background:rgba(21,25,36,.96);color:#fff;font-size:17px;font-weight:700}
+
+/* ---------- editor ---------- */
+#editor{padding-top:env(safe-area-inset-top)}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;flex:none}
+.link{background:none;border:0;color:var(--gold);font-size:17px;font-weight:700;padding:8px}
+#editText{flex:1;margin:0 16px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;font-size:19px;line-height:1.6;direction:rtl;resize:none;-webkit-user-select:text;user-select:text}
+.note{color:var(--muted);font-size:13px;padding:10px 20px calc(env(safe-area-inset-bottom) + 14px);line-height:1.5}
+
+/* ---------- studio ---------- */
+#studio{background:#000}
+#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:.32}
+#shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.94) 0%,rgba(0,0,0,.82) 42%,rgba(0,0,0,.2) 100%)}
+.sTop{position:absolute;top:calc(env(safe-area-inset-top) + 8px);left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;z-index:3}
+.pill{background:rgba(255,255,255,.12);border:0;border-radius:999px;padding:9px 16px;font-size:15px;font-weight:700;color:#fff;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#recTag{display:none;align-items:center;gap:8px;font-weight:800;color:#fff;background:rgba(255,59,59,.85);border-radius:999px;padding:7px 14px;font-variant-numeric:tabular-nums}
+#recTag.on{display:flex}
+#recTag i{width:10px;height:10px;border-radius:50%;background:#fff;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.2}}
+#prompt{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top) + 62px);padding:0 22px;text-align:center;z-index:2}
+#cur{font-weight:800;line-height:1.28;direction:rtl}
+#cur .w{color:rgba(255,255,255,.4);transition:color .1s}
+#cur .w.done{color:#fff}
+#cur .w.now{color:var(--gold)}
+#breath{margin-top:14px;height:24px;color:var(--green);font-weight:800;font-size:17px;opacity:0;transition:opacity .2s}
+#breath.on{opacity:1}
+#next{margin-top:6px;color:rgba(255,255,255,.34);font-weight:600;line-height:1.35;direction:rtl}
+#progress{position:absolute;top:calc(env(safe-area-inset-top) + 52px);left:22px;right:22px;height:3px;border-radius:2px;background:rgba(255,255,255,.12);z-index:2}
+#progress b{display:block;height:100%;width:0;background:var(--gold);border-radius:2px;transition:width .3s}
+.sBottom{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 14px);display:flex;flex-direction:column;align-items:center;gap:14px;z-index:3}
+.speedRow{display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.55);border-radius:999px;padding:6px 8px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.speedRow button{width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:24px;font-weight:800;line-height:1}
+.speedRow span{min-width:92px;text-align:center;font-size:14px;color:#fff;font-weight:700}
+.ctrls{display:flex;align-items:center;justify-content:center;gap:28px}
+.side{width:56px;height:56px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:13px;font-weight:700;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#recBtn{width:84px;height:84px;border-radius:50%;border:5px solid #fff;background:var(--red);transition:all .2s}
+#recBtn.stop{width:72px;height:72px;border-radius:20px}
+#hint{color:rgba(255,255,255,.7);font-size:14px;text-align:center}
+#count{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:160px;font-weight:800;color:var(--gold);z-index:5;background:rgba(0,0,0,.3)}
+#count.on{display:flex}
+#camErr{position:absolute;left:22px;right:22px;top:38%;display:none;text-align:center;font-size:17px;line-height:1.6;z-index:4;background:rgba(21,25,36,.95);border-radius:16px;padding:18px}
+
+/* settings sheet */
+#sheet{position:fixed;inset:0;display:none;z-index:10;background:rgba(0,0,0,.5)}
+#sheet.on{display:block}
+.sheetBox{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:22px 22px 0 0;padding:18px 20px calc(env(safe-area-inset-bottom) + 20px)}
+.grab{width:42px;height:5px;border-radius:3px;background:#3a4357;margin:0 auto 14px}
+.sheetBox h3{font-size:19px;margin-bottom:6px}
+.set{margin-top:16px}
+.set .r{display:flex;justify-content:space-between;font-weight:600;font-size:15px;margin-bottom:8px}
+.set .r b{color:var(--gold)}
+.set input[type=range]{width:100%;accent-color:var(--gold);height:28px}
+.tog{display:flex;align-items:center;justify-content:space-between;margin-top:18px;font-size:15px;font-weight:600}
+.tog input{width:24px;height:24px;accent-color:var(--gold)}
+.okbtn{display:block;width:100%;margin-top:22px;padding:15px;border:0;border-radius:14px;background:var(--gold);color:#111;font-size:18px;font-weight:800}
+
+/* review */
+#review{padding:calc(env(safe-area-inset-top) + 10px) 16px calc(env(safe-area-inset-bottom) + 16px);overflow-y:auto}
+#review h2{font-size:24px;font-weight:800;margin:8px 4px}
+#review p{color:var(--muted);font-size:14px;margin:0 4px 10px}
+#playback{width:100%;max-height:52vh;border-radius:16px;background:#000;flex:none}
+.big{display:block;width:100%;padding:17px;border-radius:16px;border:0;font-size:18px;font-weight:800;margin-top:12px;text-align:center;text-decoration:none}
+.big.gold{background:var(--gold);color:#111}
+.big.dark{background:var(--card);border:1px solid var(--line);color:#fff}
+.steps{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-top:14px;color:var(--muted);font-size:14px;line-height:1.7}
+.steps b{color:#fff}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 120px);transform:translateX(-50%);background:#fff;color:#111;padding:10px 18px;border-radius:999px;font-weight:700;font-size:15px;display:none;z-index:20}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<section id="home" class="screen on">
+  <div class="brandbar"></div>
+  <div class="head">
+    <h1>טלפרומפטר</h1>
+    <p>בוחרים תסריט, והמצלמה נפתחת.</p>
+  </div>
+  <div class="list" id="list"><div class="empty">טוען תסריטים...</div></div>
+  <button class="fab" id="newBtn">+ תסריט חדש (להדביק)</button>
+</section>
+
+<!-- EDITOR -->
+<section id="editor" class="screen">
+  <div class="brandbar"></div>
+  <div class="topbar">
+    <button class="link" id="edBack">ביטול</button>
+    <b style="font-size:17px">תסריט חדש</b>
+    <button class="link" id="edGo">לצילום</button>
+  </div>
+  <textarea id="editText" placeholder="מדביקים כאן את התסריט. כל שורה היא משפט."></textarea>
+  <div class="note">כל שורה היא משפט אחד. בסוף כל שורה הטקסט עוצר לרגע, כדי שתשתוק שנייה לפני המשפט הבא.</div>
+</section>
+
+<!-- STUDIO -->
+<section id="studio" class="screen">
+  <video id="cam" playsinline autoplay muted></video>
+  <div id="shade"></div>
+  <div class="sTop">
+    <button class="pill" id="stBack">סגירה</button>
+    <div id="recTag"><i></i><span id="clock">00:00</span></div>
+    <button class="pill" id="stSet">הגדרות</button>
+  </div>
+  <div id="progress"><b id="bar"></b></div>
+  <div id="prompt">
+    <div id="cur"></div>
+    <div id="breath">שקט שנייה...</div>
+    <div id="next"></div>
+  </div>
+  <div class="sBottom">
+    <div class="speedRow"><button id="slower" aria-label="לאט יותר">−</button><span id="speedLbl"></span><button id="faster" aria-label="מהר יותר">+</button></div>
+    <div class="ctrls">
+      <button class="side" id="prevBtn">אחורה</button>
+      <button id="recBtn" aria-label="התחלת הקלטה"></button>
+      <button class="side" id="nextBtn">קדימה</button>
+    </div>
+    <div id="hint">לחיצה על הטקסט עוצרת וממשיכה</div>
+  </div>
+  <div id="count"></div>
+  <div id="camErr"></div>
+</section>
+
+<!-- SETTINGS SHEET -->
+<div id="sheet">
+  <div class="sheetBox">
+    <div class="grab"></div>
+    <h3>הגדרות</h3>
+    <div class="set"><div class="r"><span>מהירות דיבור</span><b id="vSpeed"></b></div><input type="range" id="speed" min="70" max="190" step="5" value="115"></div>
+    <div class="set"><div class="r"><span>עצירה בסוף משפט</span><b id="vPause"></b></div><input type="range" id="pause" min="0" max="4" step="0.5" value="1.5"></div>
+    <div class="set"><div class="r"><span>גודל אות</span><b id="vSize"></b></div><input type="range" id="size" min="26" max="60" step="2" value="40"></div>
+    <div class="set"><div class="r"><span>שקיפות התמונה שלי</span><b id="vDim"></b></div><input type="range" id="dim" min="0" max="80" step="5" value="32"></div>
+    <label class="tog"><span>להמשיך למשפט הבא רק בלחיצה</span><input type="checkbox" id="tapMode"></label>
+    <button class="okbtn" id="sheetDone">סיום</button>
+  </div>
+</div>
+
+<!-- REVIEW -->
+<section id="review" class="screen">
+  <h2>ההקלטה מוכנה</h2>
+  <p>צפה, ואז שלח לדרייב או שמור בטלפון.</p>
+  <video id="playback" controls playsinline></video>
+  <button class="big gold" id="shareBtn">שליחה לדרייב / שמירה</button>
+  <button class="big dark" id="againBtn">צילום חוזר</button>
+  <button class="big dark" id="homeBtn">חזרה לתסריטים</button>
+  <div class="steps">
+    <b>שליחה לדרייב:</b> בתפריט שנפתח בוחרים <b>Drive</b>, ואז את התיקייה <b>"העלאות של יוסי"</b> של השבוע. אחרי ההעלאה כותבים לClaude <b>"העליתי"</b>.<br>
+    <b>שמירה בטלפון:</b> בתפריט בוחרים <b>"שמירת וידאו"</b>.
+  </div>
+</section>
+<div id="toast"></div>
+
+<script>
+const FALLBACK={scripts:[]};
+const $=id=>document.getElementById(id);
+const S={get(k,d){try{const v=localStorage.getItem('tp2_'+k);return v===null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem('tp2_'+k,v)}catch(e){}}};
+function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',2200);}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));}
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- settings ---------- */
+const SET=['speed','pause','size','dim'];
+SET.forEach(id=>{$(id).value=S.get(id,$(id).value);$(id).oninput=()=>{S.set(id,$(id).value);applySettings();}});
+$('tapMode').checked=S.get('tap','0')==='1';
+$('tapMode').onchange=()=>S.set('tap',$('tapMode').checked?'1':'0');
+function applySettings(){
+  $('vSpeed').textContent=$('speed').value+' מילים בדקה';
+  $('vPause').textContent=$('pause').value+' שניות';
+  $('vSize').textContent=$('size').value;
+  $('vDim').textContent=$('dim').value+'%';
+  $('speedLbl').textContent=$('speed').value+' מ/ד';
+  const fs=+$('size').value; $('cur').style.fontSize=fs+'px'; $('next').style.fontSize=Math.round(fs*.6)+'px';
+  $('cam').style.opacity=(+$('dim').value)/100;
+}
+applySettings();
+$('stSet').onclick=()=>{hold();$('sheet').classList.add('on');};
+$('sheetDone').onclick=()=>$('sheet').classList.remove('on');
+$('sheet').onclick=e=>{if(e.target.id==='sheet')$('sheet').classList.remove('on');};
+function nudge(d){const s=$('speed');s.value=Math.max(70,Math.min(190,+s.value+d));S.set('speed',s.value);applySettings();}
+$('slower').onclick=()=>nudge(-10); $('faster').onclick=()=>nudge(10);
+
+/* ---------- home ---------- */
+let scripts=[];
+function estSec(t){const w=t.split(/\s+/).filter(Boolean).length;const l=t.split(/\n+/).filter(s=>s.trim()).length;return Math.round(w/115*60+l*1.5);}
+function renderList(){
+  const L=$('list'); L.innerHTML='';
+  if(!scripts.length){L.innerHTML='<div class="empty">אין עדיין תסריטים.<br>Claude יוסיף כאן את תסריטי השבוע, או שאפשר להדביק תסריט חדש בכפתור למטה.</div>';return;}
+  scripts.forEach((s,i)=>{
+    const b=document.createElement('button'); b.className='card';
+    const sec=estSec(s.text);
+    b.innerHTML=`<span class="lab">${esc(s.label||'')}</span><span class="tit">${esc(s.title||'תסריט')}</span><span class="pre">${esc(s.text.replace(/\n/g,' '))}</span><span class="meta"><span>${s.text.split(/\n+/).filter(x=>x.trim()).length} משפטים</span><span>כ ${sec} שניות</span></span><span class="go">לצילום</span>`;
+    b.onclick=()=>startStudio(s.text);
+    L.appendChild(b);
+  });
+}
+async function loadScripts(){
+  try{
+    const r=await fetch('scripts.json?v='+Date.now(),{cache:'no-store'});
+    const j=await r.json(); scripts=j.scripts||[]; S.set('cache',JSON.stringify(scripts));
+  }catch(e){ try{scripts=JSON.parse(S.get('cache','[]'))}catch(_){scripts=FALLBACK.scripts} }
+  renderList();
+}
+loadScripts();
+$('newBtn').onclick=()=>{$('editText').value=S.get('draft','');show('editor');};
+$('edBack').onclick=()=>show('home');
+$('editText').oninput=()=>S.set('draft',$('editText').value);
+$('edGo').onclick=()=>{const t=$('editText').value.trim(); if(!t){toast('צריך להדביק תסריט');return;} startStudio(t);};
+
+/* ---------- prompter ---------- */
+let lines=[],li=0,wi=0,timer=null,paused=true,inPause=false;
+function setScript(t){lines=t.split(/\n+/).map(s=>s.trim()).filter(Boolean).map(s=>s.split(/\s+/));li=0;wi=0;render();}
+function render(){
+  const tot=lines.length||1; $('bar').style.width=Math.min(100,li/tot*100)+'%';
+  if(li>=lines.length){$('cur').innerHTML='<span class="w done">סוף התסריט 👏</span>';$('next').textContent='לוחצים על הכפתור האדום לסיום';$('breath').classList.remove('on');return;}
+  const cur=lines[li];
+  $('cur').innerHTML=cur.map((w,i)=>`<span class="w ${i<wi?'done':''} ${(i===wi&&!paused&&!inPause)?'now':''}" dir="rtl">${esc(w)}</span>`).join(' ');
+  $('next').textContent=(lines[li+1]||[]).join(' ');
+  $('breath').classList.toggle('on',inPause);
+}
+function wordMs(w){const base=60000/+$('speed').value;let m=base*(.72+Math.min(w.replace(/[^֐-׿a-zA-Z0-9]/g,'').length,9)*.055);if(/[,،:;]$/.test(w))m+=base*.55;return m;}
+function step(){
+  clearTimeout(timer); if(paused||li>=lines.length){render();return;}
+  const cur=lines[li];
+  if(wi<cur.length){render();const ms=wordMs(cur[wi]);wi++;timer=setTimeout(step,ms);}
+  else{
+    inPause=true;render();
+    if($('tapMode').checked) return;
+    timer=setTimeout(()=>{inPause=false;li++;wi=0;step();},(+$('pause').value)*1000+250);
+  }
+}
+function play(){paused=false;inPause=false;step();}
+function hold(){paused=true;clearTimeout(timer);render();}
+function go(d){clearTimeout(timer);inPause=false;li=Math.max(0,Math.min(lines.length,li+d));wi=0;render();if(!paused)step();}
+$('prompt').onclick=()=>{ if(inPause&&$('tapMode').checked){go(1);return;} paused?play():hold(); };
+$('nextBtn').onclick=()=>go(1); $('prevBtn').onclick=()=>go(-1);
+
+/* ---------- camera + recording ---------- */
+let stream=null,rec=null,chunks=[],t0=0,clockT=null,wake=null,blob=null,blobUrl=null,current='';
+async function startStudio(text){
+  current=text; setScript(text); paused=true; show('studio'); $('camErr').style.display='none';
+  if(!stream){
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1080},height:{ideal:1920},frameRate:{ideal:30}},audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+      $('cam').srcObject=stream;
+    }catch(e){
+      $('camErr').style.display='block';
+      $('camErr').innerHTML='לא הצלחתי לפתוח את המצלמה.<br><br>צריך לפתוח את הקישור ב<b>Safari</b> ולאשר גישה למצלמה ולמיקרופון.<br>אם כבר סירבת: הגדרות האייפון, Safari, מצלמה, לבחור "אפשר".';
+    }
+  }
+  try{wake=await navigator.wakeLock.request('screen');}catch(e){}
+}
+function stopCam(){ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;} }
+$('stBack').onclick=()=>{ if(rec&&rec.state==='recording'){toast('קודם עוצרים את ההקלטה');return;} hold(); stopCam(); show('home'); };
+function pickMime(){for(const m of ['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm']){if(window.MediaRecorder&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m))return m;}return '';}
+const fmt=s=>{s=Math.floor(s);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');};
+async function countdown(){const c=$('count');c.classList.add('on');for(const n of [3,2,1]){c.textContent=n;await new Promise(r=>setTimeout(r,800));}c.classList.remove('on');}
+$('recBtn').onclick=async()=>{
+  if(rec&&rec.state==='recording'){rec.stop();return;}
+  if(!stream){toast('המצלמה לא פתוחה');return;}
+  li=0;wi=0;paused=true;inPause=false;render();
+  await countdown();
+  chunks=[]; const mime=pickMime();
+  try{rec=new MediaRecorder(stream,mime?{mimeType:mime,videoBitsPerSecond:8000000}:undefined);}catch(e){rec=new MediaRecorder(stream);}
+  rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+  rec.onstop=finish; rec.start(1000);
+  t0=Date.now(); $('recTag').classList.add('on'); $('recBtn').classList.add('stop'); $('hint').textContent='מקליט... לחיצה על הטקסט עוצרת אותו';
+  clockT=setInterval(()=>$('clock').textContent=fmt((Date.now()-t0)/1000),250);
+  setTimeout(play,600);
+};
+function finish(){
+  clearInterval(clockT); hold();
+  $('recTag').classList.remove('on'); $('recBtn').classList.remove('stop'); $('hint').textContent='לחיצה על הטקסט עוצרת וממשיכה';
+  const type=(rec&&rec.mimeType)||'video/mp4';
+  blob=new Blob(chunks,{type}); if(blobUrl)URL.revokeObjectURL(blobUrl); blobUrl=URL.createObjectURL(blob);
+  $('playback').src=blobUrl; show('review');
+}
+function fileName(){const d=new Date();const ext=blob.type.includes('mp4')?'mp4':'webm';return `סרטון ${d.getDate()}-${d.getMonth()+1} ${d.getHours()}${String(d.getMinutes()).padStart(2,'0')}.${ext}`;}
+$('shareBtn').onclick=async()=>{
+  const f=new File([blob],fileName(),{type:blob.type});
+  if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f]});}catch(e){}}
+  else{const a=document.createElement('a');a.href=blobUrl;a.download=f.name;document.body.appendChild(a);a.click();a.remove();}
+};
+$('againBtn').onclick=()=>startStudio(current);
+$('homeBtn').onclick=()=>{stopCam();show('home');loadScripts();};
+document.addEventListener('visibilitychange',async()=>{if(document.visibilityState==='visible'&&stream){try{wake=await navigator.wakeLock.request('screen');}catch(e){}}});
+</script>
+</body>
+</html>
