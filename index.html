@@ -45,7 +45,7 @@ button{cursor:pointer}
 
 /* ---------- studio ---------- */
 #studio{background:#000}
-#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:.32}
+#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:scaleX(-1);opacity:.32}
 #shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.94) 0%,rgba(0,0,0,.82) 42%,rgba(0,0,0,.2) 100%)}
 .sTop{position:absolute;top:calc(env(safe-area-inset-top) + 8px);left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;z-index:3}
 .pill{background:rgba(255,255,255,.12);border:0;border-radius:999px;padding:9px 16px;font-size:15px;font-weight:700;color:#fff;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
@@ -55,9 +55,9 @@ button{cursor:pointer}
 @keyframes blink{50%{opacity:.2}}
 #prompt{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top) + 62px);padding:0 22px;text-align:center;z-index:2}
 #cur{font-weight:800;line-height:1.28;direction:rtl}
-#cur .w{color:rgba(255,255,255,.4);transition:color .1s}
-#cur .w.done{color:#fff}
-#cur .w.now{color:var(--gold)}
+#cur .ph{display:block;color:rgba(255,255,255,.55);transition:color .35s;margin:0 0 .2em}
+#cur .ph.done{color:rgba(255,255,255,.28)}
+#cur .ph.now{color:#fff}
 #breath{margin-top:14px;height:24px;color:var(--green);font-weight:800;font-size:17px;opacity:0;transition:opacity .2s}
 #breath.on{opacity:1}
 #next{margin-top:6px;color:rgba(255,255,255,.34);font-weight:600;line-height:1.35;direction:rtl}
@@ -100,7 +100,7 @@ button{cursor:pointer}
 .big.dark{background:var(--card);border:1px solid var(--line);color:#fff}
 .steps{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-top:14px;color:var(--muted);font-size:14px;line-height:1.7}
 .steps b{color:#fff}
-#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 120px);transform:translateX(-50%);background:#fff;color:#111;padding:10px 18px;border-radius:999px;font-weight:700;font-size:15px;display:none;z-index:20}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 120px);transform:translateX(-50%);background:#fff;color:#111;padding:10px 18px;border-radius:999px;font-weight:700;font-size:15px;display:none;z-index:20;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -160,11 +160,13 @@ button{cursor:pointer}
 <div id="sheet">
   <div class="sheetBox">
     <div class="grab"></div>
-    <h3>הגדרות</h3>
+    <h3>הגדרות</h3><div id="camInfo" style="color:var(--muted);font-size:13px"></div>
     <div class="set"><div class="r"><span>מהירות דיבור</span><b id="vSpeed"></b></div><input type="range" id="speed" min="70" max="190" step="5" value="115"></div>
     <div class="set"><div class="r"><span>עצירה בסוף משפט</span><b id="vPause"></b></div><input type="range" id="pause" min="0" max="4" step="0.5" value="1.5"></div>
     <div class="set"><div class="r"><span>גודל אות</span><b id="vSize"></b></div><input type="range" id="size" min="26" max="60" step="2" value="40"></div>
     <div class="set"><div class="r"><span>שקיפות התמונה שלי</span><b id="vDim"></b></div><input type="range" id="dim" min="0" max="80" step="5" value="32"></div>
+    <div class="set" id="zoomSet" style="display:none"><div class="r"><span>זום מצלמה (שמאלה = רחב יותר)</span><b id="vZoom"></b></div><input type="range" id="zoom" min="1" max="2" step="0.1" value="1"></div>
+    <label class="tog"><span>תצוגת מראה (כמו סלפי)</span><input type="checkbox" id="mirror" checked></label>
     <label class="tog"><span>להמשיך למשפט הבא רק בלחיצה</span><input type="checkbox" id="tapMode"></label>
     <button class="okbtn" id="sheetDone">סיום</button>
   </div>
@@ -197,6 +199,8 @@ const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&qu
 const SET=['speed','pause','size','dim'];
 SET.forEach(id=>{$(id).value=S.get(id,$(id).value);$(id).oninput=()=>{S.set(id,$(id).value);applySettings();}});
 $('tapMode').checked=S.get('tap','0')==='1';
+$('mirror').checked=S.get('mirror','1')==='1';
+$('mirror').onchange=()=>{S.set('mirror',$('mirror').checked?'1':'0');applySettings();};
 $('tapMode').onchange=()=>S.set('tap',$('tapMode').checked?'1':'0');
 function applySettings(){
   $('vSpeed').textContent=$('speed').value+' מילים בדקה';
@@ -206,6 +210,7 @@ function applySettings(){
   $('speedLbl').textContent=$('speed').value+' מ/ד';
   const fs=+$('size').value; $('cur').style.fontSize=fs+'px'; $('next').style.fontSize=Math.round(fs*.6)+'px';
   $('cam').style.opacity=(+$('dim').value)/100;
+  $('cam').style.transform=$('mirror').checked?'scaleX(-1)':'none';
 }
 applySettings();
 $('stSet').onclick=()=>{hold();$('sheet').classList.add('on');};
@@ -228,11 +233,30 @@ function renderList(){
     L.appendChild(b);
   });
 }
+function b64dec(t){t=t.replace(/-/g,'+').replace(/_/g,'/');while(t.length%4)t+='=';const bin=atob(t);const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);return new TextDecoder().decode(bytes);}
+function importFromLink(){
+  const h=location.hash||'';
+  if(!h.startsWith('#s=')) return false;
+  try{
+    const j=JSON.parse(b64dec(h.slice(3)));
+    S.set('linked',JSON.stringify(j.scripts||[]));
+    S.set('linkedDate',j.updated||'');
+    history.replaceState(null,'',location.pathname);
+    setTimeout(()=>toast('התסריטים החדשים נטענו ✓'),300);
+    return true;
+  }catch(e){ history.replaceState(null,'',location.pathname); setTimeout(()=>toast('הקישור לא תקין'),300); return false; }
+}
+importFromLink();
+window.addEventListener('hashchange',()=>{ if(importFromLink()) loadScripts(); });
 async function loadScripts(){
+  let linked=[]; try{linked=JSON.parse(S.get('linked','[]'))}catch(e){}
+  let file=[];
   try{
     const r=await fetch('scripts.json?v='+Date.now(),{cache:'no-store'});
-    const j=await r.json(); scripts=j.scripts||[]; S.set('cache',JSON.stringify(scripts));
-  }catch(e){ try{scripts=JSON.parse(S.get('cache','[]'))}catch(_){scripts=FALLBACK.scripts} }
+    const j=await r.json(); file=j.scripts||[]; S.set('cache',JSON.stringify(file));
+  }catch(e){ try{file=JSON.parse(S.get('cache','[]'))}catch(_){file=[]} }
+  const seen=new Set(); scripts=[];
+  [...linked,...file].forEach(x=>{ if(x&&x.text&&!seen.has(x.id||x.title)){seen.add(x.id||x.title);scripts.push(x);} });
   renderList();
 }
 loadScripts();
@@ -243,20 +267,39 @@ $('edGo').onclick=()=>{const t=$('editText').value.trim(); if(!t){toast('צרי�
 
 /* ---------- prompter ---------- */
 let lines=[],li=0,wi=0,timer=null,paused=true,inPause=false;
-function setScript(t){lines=t.split(/\n+/).map(s=>s.trim()).filter(Boolean).map(s=>s.split(/\s+/));li=0;wi=0;render();}
+/* each sentence is broken into short phrases at its natural pauses (, . ? ! : ; ...); a long phrase is split again */
+function phrases(sent){
+  const out=[]; let cur=[];
+  const words=sent.split(/\s+/).filter(Boolean);
+  words.forEach((w,i)=>{
+    cur.push(w);
+    const brk=/[,.?!:;،…\-–]$/.test(w);
+    const rest=words.length-i-1;
+    if(brk || (cur.length>=6 && rest>=2)){out.push(cur.join(' '));cur=[];}
+  });
+  if(cur.length){
+    const last=out[out.length-1];
+    if(cur.length<=2&&last&&last.split(' ').length<=4&&!/[,.?!:;…]$/.test(last)) out[out.length-1]+=' '+cur.join(' ');
+    else out.push(cur.join(' '));
+  }
+  return out;
+}
+function setScript(t){lines=t.split(/\n+/).map(s=>s.trim()).filter(Boolean).map(phrases);li=0;wi=0;render();}
 function render(){
   const tot=lines.length||1; $('bar').style.width=Math.min(100,li/tot*100)+'%';
-  if(li>=lines.length){$('cur').innerHTML='<span class="w done">סוף התסריט 👏</span>';$('next').textContent='לוחצים על הכפתור האדום לסיום';$('breath').classList.remove('on');return;}
+  if(li>=lines.length){$('cur').innerHTML='<span class="ph now">סוף התסריט 👏</span>';$('next').textContent='לוחצים על הכפתור האדום לסיום';$('breath').classList.remove('on');return;}
   const cur=lines[li];
-  $('cur').innerHTML=cur.map((w,i)=>`<span class="w ${i<wi?'done':''} ${(i===wi&&!paused&&!inPause)?'now':''}" dir="rtl">${esc(w)}</span>`).join(' ');
+  const at=inPause?-1:Math.max(0,wi-1);
+  $('cur').innerHTML=cur.map((p,i)=>`<span class="ph ${(at===-1||i<at)?'done':''} ${i===at?'now':''}" dir="rtl">${esc(p)}</span>`).join('');
   $('next').textContent=(lines[li+1]||[]).join(' ');
   $('breath').classList.toggle('on',inPause);
 }
+function phraseMs(p){return p.split(/\s+/).reduce((t,w)=>t+wordMs(w),0)+(/[,.?!:;،…]$/.test(p)?350:150);}
 function wordMs(w){const base=60000/+$('speed').value;let m=base*(.72+Math.min(w.replace(/[^֐-׿a-zA-Z0-9]/g,'').length,9)*.055);if(/[,،:;]$/.test(w))m+=base*.55;return m;}
 function step(){
   clearTimeout(timer); if(paused||li>=lines.length){render();return;}
   const cur=lines[li];
-  if(wi<cur.length){render();const ms=wordMs(cur[wi]);wi++;timer=setTimeout(step,ms);}
+  if(wi<cur.length){const ms=phraseMs(cur[wi]);wi++;render();timer=setTimeout(step,ms);}
   else{
     inPause=true;render();
     if($('tapMode').checked) return;
@@ -270,13 +313,47 @@ $('prompt').onclick=()=>{ if(inPause&&$('tapMode').checked){go(1);return;} pause
 $('nextBtn').onclick=()=>go(1); $('prevBtn').onclick=()=>go(-1);
 
 /* ---------- camera + recording ---------- */
+/* Wide framing: ask for the sensor's native 4:3 shape (no 16:9 crop), no resizing/cropping by the browser,
+   then push the zoom to its minimum. Falls back step by step if the phone refuses. */
+const AUD={echoCancellation:true,noiseSuppression:true,autoGainControl:true};
+async function openCam(){
+  const tries=[
+    {facingMode:'user',aspectRatio:{ideal:4/3},width:{ideal:1440},height:{ideal:1080},resizeMode:'none',frameRate:{ideal:30}},
+    {facingMode:'user',aspectRatio:{ideal:4/3},width:{ideal:1280},height:{ideal:960},frameRate:{ideal:30}},
+    {facingMode:'user'}
+  ];
+  let err;
+  for(const v of tries){try{return await navigator.mediaDevices.getUserMedia({video:v,audio:AUD});}catch(e){err=e;}}
+  throw err;
+}
+let zoomCap=null;
+async function widestZoom(){
+  try{
+    const tr=stream.getVideoTracks()[0];
+    const c=tr.getCapabilities?tr.getCapabilities():{};
+    if(c.zoom&&typeof c.zoom.min==='number'){
+      zoomCap=c.zoom;
+      const z=parseFloat(S.get('zoom',c.zoom.min));
+      await tr.applyConstraints({advanced:[{zoom:Math.max(c.zoom.min,Math.min(c.zoom.max,z))}]});
+      const zr=$('zoom'); zr.min=c.zoom.min; zr.max=c.zoom.max; zr.step=c.zoom.step||0.1; zr.value=tr.getSettings().zoom||c.zoom.min;
+      $('zoomSet').style.display='block'; $('vZoom').textContent=(+zr.value).toFixed(1)+'×';
+    }
+  }catch(e){}
+}
+function showCamInfo(){try{const st=stream.getVideoTracks()[0].getSettings();$('camInfo').textContent='מצלמה: '+st.width+'×'+st.height+(st.zoom?' | זום '+(+st.zoom).toFixed(1)+'×':'');}catch(e){}}
+$('zoom').oninput=async()=>{
+  const v=parseFloat($('zoom').value); $('vZoom').textContent=v.toFixed(1)+'×'; S.set('zoom',v);
+  try{await stream.getVideoTracks()[0].applyConstraints({advanced:[{zoom:v}]});showCamInfo();}catch(e){}
+};
 let stream=null,rec=null,chunks=[],t0=0,clockT=null,wake=null,blob=null,blobUrl=null,current='';
 async function startStudio(text){
   current=text; setScript(text); paused=true; show('studio'); $('camErr').style.display='none';
   if(!stream){
     try{
-      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1080},height:{ideal:1920},frameRate:{ideal:30}},audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+      stream=await openCam();
       $('cam').srcObject=stream;
+      await widestZoom();
+      showCamInfo();
     }catch(e){
       $('camErr').style.display='block';
       $('camErr').innerHTML='לא הצלחתי לפתוח את המצלמה.<br><br>צריך לפתוח את הקישור ב<b>Safari</b> ולאשר גישה למצלמה ולמיקרופון.<br>אם כבר סירבת: הגדרות האייפון, Safari, מצלמה, לבחור "אפשר".';
