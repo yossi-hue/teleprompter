@@ -161,8 +161,8 @@ button{cursor:pointer}
   <div class="sheetBox">
     <div class="grab"></div>
     <h3>הגדרות</h3><div id="camInfo" style="color:var(--muted);font-size:13px"></div>
-    <div class="set"><div class="r"><span>מהירות דיבור</span><b id="vSpeed"></b></div><input type="range" id="speed" min="70" max="190" step="5" value="115"></div>
-    <div class="set"><div class="r"><span>עצירה בסוף משפט</span><b id="vPause"></b></div><input type="range" id="pause" min="0" max="4" step="0.5" value="1.5"></div>
+    <div class="set"><div class="r"><span>מהירות דיבור</span><b id="vSpeed"></b></div><input type="range" id="speed" min="80" max="320" step="10" value="160"></div>
+    <div class="set"><div class="r"><span>עצירה בסוף משפט</span><b id="vPause"></b></div><input type="range" id="pause" min="0" max="3" step="0.25" value="0.5"></div>
     <div class="set"><div class="r"><span>גודל אות</span><b id="vSize"></b></div><input type="range" id="size" min="26" max="60" step="2" value="40"></div>
     <div class="set"><div class="r"><span>שקיפות התמונה שלי</span><b id="vDim"></b></div><input type="range" id="dim" min="0" max="80" step="5" value="32"></div>
     <div class="set" id="zoomSet" style="display:none"><div class="r"><span>זום מצלמה (שמאלה = רחב יותר)</span><b id="vZoom"></b></div><input type="range" id="zoom" min="1" max="2" step="0.1" value="1"></div>
@@ -196,6 +196,7 @@ function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.to
 const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- settings ---------- */
+if(S.get('v3','')!=='1'){if(+S.get('pause','0.5')>0.5)S.set('pause','0.5');S.set('v3','1');}
 const SET=['speed','pause','size','dim'];
 SET.forEach(id=>{$(id).value=S.get(id,$(id).value);$(id).oninput=()=>{S.set(id,$(id).value);applySettings();}});
 $('tapMode').checked=S.get('tap','0')==='1';
@@ -216,12 +217,12 @@ applySettings();
 $('stSet').onclick=()=>{hold();$('sheet').classList.add('on');};
 $('sheetDone').onclick=()=>$('sheet').classList.remove('on');
 $('sheet').onclick=e=>{if(e.target.id==='sheet')$('sheet').classList.remove('on');};
-function nudge(d){const s=$('speed');s.value=Math.max(70,Math.min(190,+s.value+d));S.set('speed',s.value);applySettings();}
+function nudge(d){const s=$('speed');s.value=Math.max(+s.min,Math.min(+s.max,+s.value+d));S.set('speed',s.value);applySettings();}
 $('slower').onclick=()=>nudge(-10); $('faster').onclick=()=>nudge(10);
 
 /* ---------- home ---------- */
 let scripts=[];
-function estSec(t){const w=t.split(/\s+/).filter(Boolean).length;const l=t.split(/\n+/).filter(s=>s.trim()).length;return Math.round(w/115*60+l*1.5);}
+function estSec(t){const w=t.split(/\s+/).filter(Boolean).length;const l=t.split(/\n+/).filter(s=>s.trim()).length;return Math.round(w/(+$('speed').value)*60+l*(+$('pause').value));}
 function renderList(){
   const L=$('list'); L.innerHTML='';
   if(!scripts.length){L.innerHTML='<div class="empty">אין עדיין תסריטים.<br>Claude יוסיף כאן את תסריטי השבוע, או שאפשר להדביק תסריט חדש בכפתור למטה.</div>';return;}
@@ -294,8 +295,8 @@ function render(){
   $('next').textContent=(lines[li+1]||[]).join(' ');
   $('breath').classList.toggle('on',inPause);
 }
-function phraseMs(p){return p.split(/\s+/).reduce((t,w)=>t+wordMs(w),0)+(/[,.?!:;،…]$/.test(p)?350:150);}
-function wordMs(w){const base=60000/+$('speed').value;let m=base*(.72+Math.min(w.replace(/[^֐-׿a-zA-Z0-9]/g,'').length,9)*.055);if(/[,،:;]$/.test(w))m+=base*.55;return m;}
+function phraseMs(p){const base=60000/+$('speed').value;return p.split(/\s+/).reduce((t,w)=>t+wordMs(w),0)+base*(/[,.?!:;،…]$/.test(p)?.35:.1);}
+function wordMs(w){const base=60000/+$('speed').value;let m=base*(.72+Math.min(w.replace(/[^֐-׿a-zA-Z0-9]/g,'').length,9)*.055);if(/[,،:;]$/.test(w))m+=base*.3;return m;}
 function step(){
   clearTimeout(timer); if(paused||li>=lines.length){render();return;}
   const cur=lines[li];
@@ -303,7 +304,7 @@ function step(){
   else{
     inPause=true;render();
     if($('tapMode').checked) return;
-    timer=setTimeout(()=>{inPause=false;li++;wi=0;step();},(+$('pause').value)*1000+250);
+    timer=setTimeout(()=>{inPause=false;li++;wi=0;step();},(+$('pause').value)*1000);
   }
 }
 function play(){paused=false;inPause=false;step();}
