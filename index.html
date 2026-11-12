@@ -51,6 +51,11 @@ button{cursor:pointer}
 .pill{background:rgba(255,255,255,.12);border:0;border-radius:999px;padding:9px 16px;font-size:15px;font-weight:700;color:#fff;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 #recTag{display:none;align-items:center;gap:8px;font-weight:800;color:#fff;background:rgba(255,59,59,.85);border-radius:999px;padding:7px 14px;font-variant-numeric:tabular-nums}
 #recTag.on{display:flex}
+#mic{display:flex;align-items:center;gap:6px;color:#fff;font-weight:700;font-size:13px;background:rgba(0,0,0,.45);border-radius:999px;padding:6px 10px}
+#mic b{display:block;width:46px;height:8px;border-radius:4px;background:rgba(255,255,255,.25);overflow:hidden}
+#mic b i{display:block;height:100%;width:0;background:#3DB285;transition:width .1s}
+#mic.bad{background:#d62828}
+#micAlert{display:none;position:absolute;left:16px;right:16px;top:90px;z-index:30;background:#d62828;color:#fff;font-weight:800;font-size:17px;line-height:1.45;border-radius:14px;padding:14px 16px;text-align:center;direction:rtl}
 #recTag i{width:10px;height:10px;border-radius:50%;background:#fff;animation:blink 1s infinite}
 @keyframes blink{50%{opacity:.2}}
 #prompt{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top) + 62px);padding:0 22px;text-align:center;z-index:2}
@@ -135,9 +140,11 @@ button{cursor:pointer}
   <div class="sTop">
     <button class="pill" id="stBack">סגירה</button>
     <div id="recTag"><i></i><span id="clock">00:00</span></div>
+    <div id="mic"><span>מיקרופון</span><b><i id="micLvl"></i></b></div>
     <button class="pill" id="stSet">הגדרות</button>
   </div>
   <div id="progress"><b id="bar"></b></div>
+  <div id="micAlert"></div>
   <div id="prompt">
     <div id="cur"></div>
     <div id="breath">שקט שנייה...</div>
@@ -347,6 +354,34 @@ $('zoom').oninput=async()=>{
   try{await stream.getVideoTracks()[0].applyConstraints({advanced:[{zoom:v}]});showCamInfo();}catch(e){}
 };
 let stream=null,rec=null,chunks=[],t0=0,clockT=null,wake=null,blob=null,blobUrl=null,current='';
+/* בדיקת שמע (12.11): בסרטון של 12.11 לא נשמר ערוץ קול. בודקים שהמיקרופון חי לפני ההקלטה ובמהלכה. */
+let actx=null,analyser=null,micPeak=0,micT=null,heardDuringRec=false;
+function micTrack(){return stream?stream.getAudioTracks()[0]:null;}
+function micOk(){const t=micTrack();return !!(t&&t.readyState==='live'&&t.enabled&&!t.muted);}
+function micAlert(msg){const e=$('micAlert');if(msg){e.innerHTML=msg;e.style.display='block';}else e.style.display='none';$('mic').classList.toggle('bad',!!msg);}
+function startMeter(){
+  try{
+    if(actx)actx.close();
+    actx=new (window.AudioContext||window.webkitAudioContext)();
+    const src=actx.createMediaStreamSource(new MediaStream([micTrack()]));
+    analyser=actx.createAnalyser();analyser.fftSize=512;src.connect(analyser);
+    const buf=new Uint8Array(analyser.fftSize);
+    clearInterval(micT);
+    micT=setInterval(()=>{
+      if(actx.state==='suspended')actx.resume();
+      analyser.getByteTimeDomainData(buf);let m=0;for(const v of buf)m=Math.max(m,Math.abs(v-128));
+      micPeak=m;$('micLvl').style.width=Math.min(100,m*2.5)+'%';
+      if(rec&&rec.state==='recording'&&m>6)heardDuringRec=true;
+      if(!micOk())micAlert('המיקרופון הפסיק לעבוד. עצרו את ההקלטה, סגרו ופתחו שוב את המצלמה.');
+    },120);
+  }catch(e){}
+}
+async function ensureMic(){
+  if(micOk())return true;
+  stopCam();
+  try{stream=await openCam();$('cam').srcObject=stream;await widestZoom();showCamInfo();startMeter();}catch(e){}
+  return micOk();
+}
 async function startStudio(text){
   current=text; setScript(text); paused=true; show('studio'); $('camErr').style.display='none';
   if(!stream){
@@ -355,6 +390,8 @@ async function startStudio(text){
       $('cam').srcObject=stream;
       await widestZoom();
       showCamInfo();
+      startMeter();
+      micAlert(micOk()?'':'אין קול מהמיקרופון. צריך לאשר למיקרופון בהגדרות האייפון, Safari, מיקרופון, "אפשר", ולפתוח שוב.');
     }catch(e){
       $('camErr').style.display='block';
       $('camErr').innerHTML='לא הצלחתי לפתוח את המצלמה.<br><br>צריך לפתוח את הקישור ב<b>Safari</b> ולאשר גישה למצלמה ולמיקרופון.<br>אם כבר סירבת: הגדרות האייפון, Safari, מצלמה, לבחור "אפשר".';
@@ -362,7 +399,7 @@ async function startStudio(text){
   }
   try{wake=await navigator.wakeLock.request('screen');}catch(e){}
 }
-function stopCam(){ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;} }
+function stopCam(){ clearInterval(micT); if(actx){try{actx.close();}catch(e){} actx=null;} if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;} }
 $('stBack').onclick=()=>{ if(rec&&rec.state==='recording'){toast('קודם עוצרים את ההקלטה');return;} hold(); stopCam(); show('home'); };
 function pickMime(){for(const m of ['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm']){if(window.MediaRecorder&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m))return m;}return '';}
 const fmt=s=>{s=Math.floor(s);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');};
@@ -370,6 +407,8 @@ async function countdown(){const c=$('count');c.classList.add('on');for(const n 
 $('recBtn').onclick=async()=>{
   if(rec&&rec.state==='recording'){rec.stop();return;}
   if(!stream){toast('המצלמה לא פתוחה');return;}
+  if(!(await ensureMic())){micAlert('אין קול מהמיקרופון, ולכן ההקלטה לא מתחילה. בדקו בהגדרות האייפון, Safari, מיקרופון, "אפשר", וסגרו אפליקציות אחרות שמשתמשות במיקרופון.');return;}
+  micAlert('');heardDuringRec=false;
   li=0;wi=0;paused=true;inPause=false;render();
   await countdown();
   chunks=[]; const mime=pickMime();
@@ -377,7 +416,8 @@ $('recBtn').onclick=async()=>{
   rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
   rec.onstop=finish; rec.start(1000);
   t0=Date.now(); $('recTag').classList.add('on'); $('recBtn').classList.add('stop'); $('hint').textContent='מקליט... לחיצה על הטקסט עוצרת אותו';
-  clockT=setInterval(()=>$('clock').textContent=fmt((Date.now()-t0)/1000),250);
+  clockT=setInterval(()=>{$('clock').textContent=fmt((Date.now()-t0)/1000);
+    if(Date.now()-t0>5000&&!heardDuringRec)micAlert('לא נקלט קול ב 5 השניות הראשונות. אם דיברתם, עצרו ובדקו את המיקרופון.');},250);
   setTimeout(play,600);
 };
 function finish(){
@@ -386,6 +426,7 @@ function finish(){
   const type=(rec&&rec.mimeType)||'video/mp4';
   blob=new Blob(chunks,{type}); if(blobUrl)URL.revokeObjectURL(blobUrl); blobUrl=URL.createObjectURL(blob);
   $('playback').src=blobUrl; show('review');
+  if(!heardDuringRec||!micOk())setTimeout(()=>alert('שימו לב: לא נקלט קול בהקלטה הזו. הקשיבו לה לפני השליחה, ואם אין קול, צלמו שוב.'),300);
 }
 function fileName(){const d=new Date();const ext=blob.type.includes('mp4')?'mp4':'webm';return `סרטון ${d.getDate()}-${d.getMonth()+1} ${d.getHours()}${String(d.getMinutes()).padStart(2,'0')}.${ext}`;}
 $('shareBtn').onclick=async()=>{
